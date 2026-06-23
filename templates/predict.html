@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Predict — AeroVerse AI{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au" style="min-height:200px;">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1556388158-158ea5ccacbd?w=1920&q=80');"></div>
+    <div class="hero-g1"></div><div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag">🤖 AI-POWERED PREDICTION</div>
+      <h1 class="hero-title" style="font-size:2rem;">Flight Delay <span class="acc">Predictor</span></h1>
+      <p class="hero-desc" style="font-size:0.88rem;margin-bottom:0;">Random Forest model trained on Indian aviation data — real-time probability scoring.</p>
+    </div>
+  </div>
+
+  <div class="g12 au d1" style="align-items:start;">
+
+    <!-- FORM -->
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Flight Parameters</div></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Airline</label>
+          <select class="form-control" id="airline">
+            <option>IndiGo</option><option>Air India</option><option>SpiceJet</option>
+            <option>Vistara</option><option>GoAir</option><option>AirAsia</option>
+          </select>
+        </div>
+        <div class="g2">
+          <div class="form-group">
+            <label class="form-label">Origin</label>
+            <select class="form-control" id="origin">
+              <option>DEL</option><option>BOM</option><option>MAA</option><option>BLR</option>
+              <option>HYD</option><option>CCU</option><option>COK</option><option>GOI</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination</label>
+            <select class="form-control" id="dest">
+              <option>BOM</option><option>DEL</option><option>MAA</option><option>BLR</option>
+              <option>HYD</option><option>CCU</option><option>COK</option><option>GOI</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="form-group">
+            <label class="form-label">Dep. Hour (0–23)</label>
+            <input class="form-control" type="number" id="dep_hour" min="0" max="23" value="8">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Day of Week</label>
+            <select class="form-control" id="day_of_week">
+              <option value="0">Monday</option><option value="1">Tuesday</option>
+              <option value="2">Wednesday</option><option value="3">Thursday</option>
+              <option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Route Distance (km)</label>
+          <input class="form-control" type="number" id="distance" value="1200" min="100" max="4000">
+        </div>
+        <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center;" onclick="runPredict()" id="pBtn">
+          <span id="pBtnLabel">🔮 Run AI Prediction</span>
+        </button>
+        <button class="btn btn-outline btn-sm mt2" style="width:100%;justify-content:center;" onclick="retrain()">↺ Retrain Model</button>
+        <div id="trainMsg" style="font-size:0.78rem;color:var(--green);margin-top:8px;text-align:center;"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- Result card (hidden until predict) -->
+      <div class="card mb3" id="resultCard" style="display:none;">
+        <div class="card-header"><div class="card-title"><div class="cdot"></div>Prediction Result</div></div>
+        <div class="card-body" id="resultBody"></div>
+      </div>
+
+      <!-- Model stats -->
+      <div class="card mb3">
+        <div class="card-header"><div class="card-title"><div class="cdot"></div>Model Statistics</div></div>
+        <div class="card-body" id="modelStats">
+          <div style="color:var(--muted)">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Mini image -->
+      <div class="img-card" style="height:160px;">
+        <img src="https://images.unsplash.com/photo-1520437358207-323b43b50729?w=800&q=80" alt="cockpit" style="height:160px;">
+        <div class="img-card-body">
+          <div class="img-card-title" style="font-size:0.9rem;">Powered by Random Forest</div>
+          <div class="img-card-desc">150 decision trees · 10 features · Indian aviation dataset</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT TABLE -->
+  <div class="card mt3 au d3">
+    <div class="card-header"><div class="card-title"><div class="cdot"></div>Recent Prediction History</div></div>
+    <div style="overflow-x:auto;">
+      <table class="av-table">
+        <thead><tr><th>Airline</th><th>Route</th><th>Hour</th><th>Day</th><th>Dist</th><th>Prob</th><th>Result</th></tr></thead>
+        <tbody id="recentPreds"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+async function runPredict(){
+  const payload={
+    airline:document.getElementById('airline').value,
+    origin:document.getElementById('origin').value,
+    dest:document.getElementById('dest').value,
+    dep_hour:+document.getElementById('dep_hour').value,
+    day_of_week:+document.getElementById('day_of_week').value,
+    distance:+document.getElementById('distance').value,
+  };
+  const lbl=document.getElementById('pBtnLabel');
+  lbl.textContent='⟳ Analysing…';
+  document.getElementById('pBtn').disabled=true;
+
+  try{
+    const r=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    const pct=(d.probability*100).toFixed(1);
+    const isDelay=d.delayed;
+    const clr=isDelay?'var(--red)':'var(--green)';
+    const glw=isDelay?'rgba(239,68,68,0.4)':'rgba(16,185,129,0.4)';
+
+    document.getElementById('resultBody').innerHTML=`
+      <div style="text-align:center;padding:20px 0;">
+        <div style="font-family:var(--ff-h);font-size:2.4rem;font-weight:700;color:${clr};text-shadow:0 0 30px ${glw};margin-bottom:8px;">${d.label}</div>
+        <div style="font-size:0.88rem;color:var(--muted);">Confidence: <b style="color:var(--sky2);">${d.confidence}%</b></div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:16px;margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:0.78rem;color:var(--muted);">Delay Probability</span>
+          <span style="font-family:var(--ff-m);color:${clr};">${pct}%</span>
+        </div>
+        <div class="prog" style="height:10px;">
+          <div class="prog-fill ${isDelay?'pf-red':'pf-green'}" style="width:${pct}%;"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:0.82rem;">
+        ${[['Route',d.route],['Airline',d.airline],['Departure',d.dep_hour+' — '+d.flight_date],['Distance',d.distance+' km']].map(([k,v])=>`
+          <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+            <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">${k}</div>
+            <div style="color:var(--ice2);font-weight:500;">${v}</div>
+          </div>`).join('')}
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Risk Level</div>
+          <span class="badge ${d.risk_level==='HIGH'?'b-red':d.risk_level==='MEDIUM'?'b-gold':'b-green'}">${d.risk_level}</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Model Acc.</div>
+          <div style="color:var(--sky2);font-weight:600;">${d.model_acc}%</div>
+        </div>
+      </div>
+
+      ${d.tips.length?`<div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:12px;">
+        <div style="font-size:0.72rem;color:var(--gold2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">⚠ Risk Factors</div>
+        ${d.tips.map(t=>`<div style="font-size:0.8rem;color:var(--ice);margin-bottom:4px;">• ${t}</div>`).join('')}
+      </div>`:''}
+    `;
+    document.getElementById('resultCard').style.display='block';
+    loadRecent();
+  }catch(e){alert('Error: '+e.message);}
+  lbl.textContent='🔮 Run AI Prediction';
+  document.getElementById('pBtn').disabled=false;
+}
+
+async function retrain(){
+  document.getElementById('trainMsg').textContent='Training…';
+  const r=await fetch('/train',{method:'POST'}).then(r=>r.json());
+  document.getElementById('trainMsg').textContent='✓ '+r.message;
+  loadModelStats();
+}
+
+async function loadModelStats(){
+  const m=await fetch('/api/model/stats').then(r=>r.json());
+  document.getElementById('modelStats').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.82rem;margin-bottom:16px;">
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+        <div style="color:var(--muted);font-size:0.67rem;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">Accuracy</div>
+        <div style="color:var(--sky2);font-family:var(--ff-h);font-size:1.3rem;font-weight:700;">${m.accuracy}%</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+        <div style="color:var(--muted);font-size:0.67rem;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">Samples</div>
+        <div style="color:var(--ice2);font-family:var(--ff-h);font-size:1.3rem;font-weight:700;">${m.n_samples.toLocaleString()}</div>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--muted);line-height:1.8;">
+      <b style="color:var(--sky);">Model:</b> ${m.model_type}<br>
+      <b style="color:var(--sky);">Base delay rate:</b> ${m.delay_rate}%<br>
+      <b style="color:var(--sky);">Features:</b> ${m.features.join(', ')}
+    </div>`;
+}
+
+async function loadRecent(){
+  const p=await fetch('/api/predictions').then(r=>r.json());
+  document.getElementById('recentPreds').innerHTML=p.slice(0,15).map(r=>`
+    <tr>
+      <td>${r.airline}</td>
+      <td style="font-family:var(--ff-m);color:var(--sky2);">${r.origin}→${r.dest}</td>
+      <td>${r.dep_hour}:00</td><td>${DAYS[r.day_of_week]}</td><td>${r.distance}km</td>
+      <td><span style="font-family:var(--ff-m);color:${r.probability>0.5?'var(--red)':'var(--green)'};">${(r.probability*100).toFixed(0)}%</span></td>
+      <td>${r.delayed?'<span class="badge b-red">DELAYED</span>':'<span class="badge b-green">ON TIME</span>'}</td>
+    </tr>`).join('');
+}
+
+loadModelStats(); loadRecent();
+</script>
+{% endblock %}

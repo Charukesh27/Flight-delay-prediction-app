@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AeroVerse AI{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au" style="min-height:220px;">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1540339832862-474599807836?w=1920&q=80');"></div>
+    <div class="hero-g1"></div><div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag">📊 OPERATIONS ANALYTICS</div>
+      <h1 class="hero-title" style="font-size:2rem;">Airport Intelligence <span class="acc">Dashboard</span></h1>
+      <p class="hero-desc" style="font-size:0.88rem;margin-bottom:0;">Real-time delay analytics, airline performance metrics and AI model stats.</p>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid mb3 au d1" id="kpiRow">
+    <div class="kpi"><div class="kpi-icon">📋</div><div class="kpi-val" id="d-total">—</div><div class="kpi-label">Total Predictions</div></div>
+    <div class="kpi"><div class="kpi-icon">⚠️</div><div class="kpi-val red" id="d-delayed">—</div><div class="kpi-label">Delayed Flights</div></div>
+    <div class="kpi"><div class="kpi-icon">✅</div><div class="kpi-val green" id="d-ontime">—</div><div class="kpi-label">On Time</div></div>
+    <div class="kpi"><div class="kpi-icon">📈</div><div class="kpi-val gold" id="d-rate">—</div><div class="kpi-label">Delay Rate</div></div>
+    <div class="kpi"><div class="kpi-icon">🛫</div><div class="kpi-val" id="d-rwy">—</div><div class="kpi-label">Runway Util.</div></div>
+    <div class="kpi"><div class="kpi-icon">🚪</div><div class="kpi-val gold" id="d-gate">—</div><div class="kpi-label">Gate Occupancy</div></div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="g2 mb3 au d2">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Delay Rate by Airline</div></div>
+      <div class="card-body"><canvas id="airlineChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Delay by Departure Hour</div></div>
+      <div class="card-body"><canvas id="hourChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="g2 mb3 au d3">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Day of Week Analysis</div></div>
+      <div class="card-body"><canvas id="dayChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Probability Distribution</div></div>
+      <div class="card-body"><canvas id="probChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROUTES + AI -->
+  <div class="g21 mb3 au d4">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Top Routes — Delay %</div></div>
+      <div style="overflow-x:auto;">
+        <table class="av-table">
+          <thead><tr><th>Route</th><th>Flights</th><th>Delayed</th><th>Delay %</th></tr></thead>
+          <tbody id="routesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>AI Model Performance</div></div>
+      <div class="card-body" id="aiPanel">Loading…</div>
+    </div>
+  </div>
+
+  <!-- RECENT PREDICTIONS -->
+  <div class="card au d4">
+    <div class="card-header">
+      <div class="card-title"><div class="cdot"></div>Recent Predictions Log</div>
+      <button class="btn btn-outline btn-sm" onclick="loadAll()">↺ Refresh</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="av-table">
+        <thead><tr><th>Airline</th><th>Route</th><th>Hour</th><th>Day</th><th>Distance</th><th>Probability</th><th>Result</th><th>Time</th></tr></thead>
+        <tbody id="predTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+Chart.defaults.color='#5a7a9a';
+Chart.defaults.borderColor='rgba(56,189,248,0.07)';
+
+function mkBar(id,labels,data,color){
+  const ctx=document.getElementById(id);
+  if(ctx._c) ctx._c.destroy();
+  ctx._c=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:color||'rgba(56,189,248,0.25)',borderColor:'rgba(56,189,248,0.7)',borderWidth:2,borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(56,189,248,0.04)'}},y:{grid:{color:'rgba(56,189,248,0.04)'}}}}});
+}
+function mkLine(id,labels,data){
+  const ctx=document.getElementById(id);
+  if(ctx._c) ctx._c.destroy();
+  ctx._c=new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:'rgba(56,189,248,0.8)',backgroundColor:'rgba(56,189,248,0.08)',borderWidth:2,fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'rgba(56,189,248,1)'}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(56,189,248,0.04)'}},y:{grid:{color:'rgba(56,189,248,0.04)'}}}}});
+}
+
+async function loadAll(){
+  const [sum,byAl,byHr,byDay,byRt,prob,kpi,models,preds]=await Promise.all([
+    fetch('/api/dashboard/summary').then(r=>r.json()),
+    fetch('/api/dashboard/by-airline').then(r=>r.json()),
+    fetch('/api/dashboard/by-hour').then(r=>r.json()),
+    fetch('/api/dashboard/by-day').then(r=>r.json()),
+    fetch('/api/dashboard/by-route').then(r=>r.json()),
+    fetch('/api/dashboard/probability-dist').then(r=>r.json()),
+    fetch('/api/dashboard/kpi').then(r=>r.json()),
+    fetch('/api/dashboard/ai-analytics').then(r=>r.json()),
+    fetch('/api/predictions').then(r=>r.json()),
+  ]);
+
+  document.getElementById('d-total').textContent=sum.total_predictions;
+  document.getElementById('d-delayed').textContent=sum.delayed;
+  document.getElementById('d-ontime').textContent=sum.on_time;
+  document.getElementById('d-rate').textContent=sum.delay_rate+'%';
+  document.getElementById('d-rwy').textContent=kpi.runway_utilization+'%';
+  document.getElementById('d-gate').textContent=kpi.gate_occupancy+'%';
+
+  mkBar('airlineChart',byAl.map(r=>r.airline),byAl.map(r=>+(r.delayed/r.total*100).toFixed(1)));
+  mkLine('hourChart',byHr.map(r=>r.hour+':00'),byHr.map(r=>r.delay_pct));
+  mkBar('dayChart',byDay.map(r=>r.day||DAYS[r.day_of_week]),byDay.map(r=>+(r.delayed/r.total*100).toFixed(1)),'rgba(245,158,11,0.3)');
+  mkBar('probChart',prob.map(r=>r.range),prob.map(r=>r.count),'rgba(139,92,246,0.3)');
+
+  const pBadge=p=>p>70?`<span class="badge b-red">${p}%</span>`:p>40?`<span class="badge b-gold">${p}%</span>`:`<span class="badge b-green">${p}%</span>`;
+  document.getElementById('routesTbody').innerHTML=byRt.map(r=>`
+    <tr><td style="font-family:var(--ff-m);font-size:0.8rem;color:var(--sky2);">${r.route}</td><td>${r.total}</td><td>${r.delayed}</td><td>${pBadge(r.delay_pct)}</td></tr>`).join('');
+
+  document.getElementById('aiPanel').innerHTML=models.map(m=>`
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:0.84rem;font-weight:600;color:var(--ice2);">${m.model_name}</span>
+        <span style="font-family:var(--ff-m);font-size:0.8rem;color:var(--sky2);">${(m.accuracy*100).toFixed(1)}%</span>
+      </div>
+      <div class="prog"><div class="prog-fill" style="width:${m.accuracy*100}%"></div></div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:5px;">${m.predictions.toLocaleString()} predictions · ${m.anomalies} anomalies</div>
+    </div>`).join('');
+
+  document.getElementById('predTbody').innerHTML=preds.slice(0,15).map(p=>`
+    <tr>
+      <td>${p.airline}</td>
+      <td style="font-family:var(--ff-m);color:var(--sky2);">${p.origin}→${p.dest}</td>
+      <td>${p.dep_hour}:00</td>
+      <td>${DAYS[p.day_of_week]}</td>
+      <td>${p.distance} km</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="prog" style="width:60px;"><div class="prog-fill ${p.probability>0.5?'pf-red':'pf-green'}" style="width:${(p.probability*100).toFixed(0)}%"></div></div>
+          <span style="font-family:var(--ff-m);font-size:0.78rem;color:var(--muted);">${(p.probability*100).toFixed(0)}%</span>
+        </div>
+      </td>
+      <td>${p.delayed?'<span class="badge b-red">DELAYED</span>':'<span class="badge b-green">ON TIME</span>'}</td>
+      <td style="font-size:0.72rem;color:var(--muted);">${(p.created_at||'').slice(0,16)}</td>
+    </tr>`).join('');
+}
+loadAll(); setInterval(loadAll,14000);
+</script>
+{% endblock %}

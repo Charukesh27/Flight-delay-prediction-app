@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Aircraft — AeroVerse AI{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au" style="min-height:200px;">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1474302770737-173ee21bab63?w=1920&q=80');"></div>
+    <div class="hero-g1"></div><div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag">✈ LIVE AIRCRAFT TRACKING</div>
+      <h1 class="hero-title" style="font-size:2rem;">Flight <span class="acc">Position Map</span></h1>
+      <p class="hero-desc" style="font-size:0.88rem;margin-bottom:0;">Real-time aircraft positions across Indian airspace with live telemetry.</p>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="card mb3 au d1">
+    <div class="card-header">
+      <div class="card-title"><div class="cdot"></div>Live Aircraft Map — India</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="acCount" class="badge b-sky">— Aircraft</span>
+        <button class="btn btn-outline btn-sm" onclick="loadAircraft()">↺ Refresh</button>
+      </div>
+    </div>
+    <div style="padding:12px;">
+      <div id="map" style="height:460px;border-radius:10px;border:1px solid var(--border);"></div>
+    </div>
+  </div>
+
+  <!-- FLEET + WEATHER -->
+  <div class="g2 mb3 au d2">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Fleet Utilization</div></div>
+      <div class="card-body" id="fleetPanel">Loading…</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Meteorological Briefing</div></div>
+      <div class="card-body" id="wxPanel">Loading…</div>
+    </div>
+  </div>
+
+  <!-- FLIGHT TABLE -->
+  <div class="card au d3">
+    <div class="card-header"><div class="card-title"><div class="cdot"></div>Active Flight Registry</div></div>
+    <div style="overflow-x:auto;">
+      <table class="av-table">
+        <thead><tr><th>Flight</th><th>Airline</th><th>Route</th><th>Status</th><th>Altitude</th><th>Speed</th><th>Progress</th><th>Gate</th></tr></thead>
+        <tbody id="acTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const map=L.map('map',{zoomControl:true}).setView([20.5,78.9],5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CARTO',maxZoom:18}).addTo(map);
+
+const mkIcon=color=>`<div style="color:${color};font-size:16px;text-shadow:0 0 10px ${color};transform:rotate(-45deg);">▲</div>`;
+const acIcon=L.divIcon({className:'',html:mkIcon('#38bdf8'),iconSize:[18,18],iconAnchor:[9,9]});
+
+const markers={};
+
+const statusBadge=s=>{
+  const m={Cruising:'b-sky',Climbing:'b-green',Descending:'b-gold',Approach:'b-orange',Taxi:'b-purple',Boarding:'b-purple'};
+  return `<span class="badge ${m[s]||'b-sky'}">${s}</span>`;
+};
+
+const WX_ICON={Clear:'☀️','Partly Cloudy':'⛅','Overcast':'☁️','Light Rain':'🌧️','Thunderstorm':'⛈️','Fog':'🌫️','Windy':'💨'};
+
+async function loadAircraft(){
+  const [aircraft,fleet,wx]=await Promise.all([
+    fetch('/api/aircraft/all').then(r=>r.json()),
+    fetch('/api/aircraft/fleet-utilization').then(r=>r.json()),
+    fetch('/api/weather').then(r=>r.json()),
+  ]);
+
+  document.getElementById('acCount').textContent=aircraft.length+' Aircraft';
+
+  // Map markers
+  const seen=new Set();
+  aircraft.forEach(ac=>{
+    seen.add(ac.id);
+    const popup=`<div style="font-family:var(--ff-b);min-width:170px;">
+      <div style="font-family:var(--ff-h);font-size:1rem;font-weight:700;color:var(--sky2);margin-bottom:6px;">✈ ${ac.flight_num}</div>
+      <div style="font-size:0.78rem;color:var(--ice);margin-bottom:2px;">${ac.airline}</div>
+      <div style="font-size:0.8rem;color:var(--ice2);margin-bottom:8px;">${ac.origin} → ${ac.dest}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:0.74rem;color:var(--muted);">
+        <div>Alt: <b style="color:var(--ice2);">${ac.altitude?.toLocaleString()||'—'}ft</b></div>
+        <div>Spd: <b style="color:var(--ice2);">${ac.speed||'—'}kph</b></div>
+        <div>Status: <b style="color:var(--sky);">${ac.status}</b></div>
+        <div>Gate: <b style="color:var(--gold2);">${ac.gate}</b></div>
+      </div>
+    </div>`;
+    if(markers[ac.id]){
+      markers[ac.id].setLatLng([ac.lat,ac.lon]);
+      markers[ac.id].setPopupContent(popup);
+    } else {
+      markers[ac.id]=L.marker([ac.lat,ac.lon],{icon:acIcon}).addTo(map).bindPopup(popup,{className:'dark-popup'});
+    }
+  });
+  Object.keys(markers).forEach(id=>{if(!seen.has(+id)){map.removeLayer(markers[id]);delete markers[id];}});
+
+  // Fleet
+  document.getElementById('fleetPanel').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+      ${[['Total',fleet.total,'sky'],['Cruising',fleet.cruising,'green'],['Approach',fleet.approach,'gold']].map(([l,v,c])=>`
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-family:var(--ff-h);font-size:1.4rem;font-weight:700;color:var(--${c}2);">${v}</div>
+          <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px;">${l}</div>
+        </div>`).join('')}
+    </div>
+    ${Object.entries(fleet.airlines).map(([al,cnt])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:0.82rem;">
+        <span style="min-width:80px;color:var(--ice2);">${al}</span>
+        <div class="prog" style="flex:1;"><div class="prog-fill" style="width:${(cnt/fleet.total*100).toFixed(0)}%;"></div></div>
+        <span style="font-family:var(--ff-m);font-size:0.78rem;color:var(--sky2);min-width:20px;">${cnt}</span>
+      </div>`).join('')}`;
+
+  // Weather
+  const imp=wx.impact||'None';
+  document.getElementById('wxPanel').innerHTML=`
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">
+      <span style="font-size:2.8rem;">${WX_ICON[wx.condition]||'🌡️'}</span>
+      <div>
+        <div style="font-family:var(--ff-h);font-size:2rem;font-weight:700;color:var(--sky2);line-height:1;">${wx.temp_c}°C</div>
+        <div style="color:var(--muted);font-size:0.85rem;">${wx.condition}</div>
+        <span class="badge ${imp.includes('Major')?'b-red':imp.includes('Moderate')?'b-gold':'b-green'} mt1">${imp} Impact</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;">
+      ${[['Wind',wx.wind_kph+'kph '+wx.wind_dir],['Visibility',wx.visibility_km+'km'],['Humidity',wx.humidity+'%'],['Pressure',wx.pressure+' hPa'],['Ceiling',wx.ceiling_ft?.toLocaleString()+' ft'],['Updated','Just now']].map(([k,v])=>`
+        <div style="background:rgba(255,255,255,0.03);border-radius:7px;padding:9px;">
+          <div style="color:var(--muted);font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px;">${k}</div>
+          <div style="color:var(--ice2);font-weight:500;font-size:0.8rem;">${v}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // Table
+  document.getElementById('acTable').innerHTML=aircraft.slice(0,20).map(ac=>`
+    <tr>
+      <td style="font-family:var(--ff-m);color:var(--sky2);">${ac.flight_num}</td>
+      <td>${ac.airline}</td>
+      <td style="font-family:var(--ff-m);font-size:0.8rem;">${ac.origin}→${ac.dest}</td>
+      <td>${statusBadge(ac.status)}</td>
+      <td style="font-family:var(--ff-m);">${ac.altitude?.toLocaleString()||'—'} ft</td>
+      <td style="font-family:var(--ff-m);">${ac.speed||'—'} kph</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="prog" style="width:70px;"><div class="prog-fill" style="width:${(ac.progress*100).toFixed(0)}%;"></div></div>
+          <span style="font-size:0.72rem;color:var(--muted);">${(ac.progress*100).toFixed(0)}%</span>
+        </div>
+      </td>
+      <td style="color:var(--muted);">${ac.gate}</td>
+    </tr>`).join('');
+}
+
+loadAircraft(); setInterval(loadAircraft,5000);
+
+// Live position updates
+const socket=io();
+socket.on('aircraft_update',data=>{
+  if(data.aircraft) data.aircraft.forEach(ac=>{
+    if(markers[ac.id]) markers[ac.id].setLatLng([ac.lat,ac.lon]);
+  });
+});
+socket.on('live_update',data=>{
+  if(data.aircraft) data.aircraft.forEach(ac=>{
+    if(markers[ac.id]) markers[ac.id].setLatLng([ac.lat,ac.lon]);
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Home — AeroVerse AI{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1920&q=85');"></div>
+    <div class="hero-g1"></div>
+    <div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag">✦ AEROVERSE AI v3.0 — LIVE OPERATIONS</div>
+      <h1 class="hero-title">Smart Airport<br><span class="acc">Digital Twin Ecosystem</span></h1>
+      <p class="hero-desc">Real-time aviation intelligence — AI delay prediction, live aircraft tracking, 15-node network simulation, cybersecurity and advanced analytics.</p>
+      <div class="hero-actions">
+        <a href="/dashboard" class="btn btn-primary btn-lg">📊 Live Dashboard</a>
+        <a href="/predict"   class="btn btn-gold btn-lg">🤖 Predict Delay</a>
+        <a href="/network"   class="btn btn-outline">📡 Network Sim</a>
+        <a href="/aircraft"  class="btn btn-outline">✈ Aircraft Map</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-grid mb3 au d1" id="kpiRow">
+    <div class="kpi"><div class="kpi-icon">✈</div><div class="kpi-val" id="k-flights">—</div><div class="kpi-label">Active Flights</div></div>
+    <div class="kpi"><div class="kpi-icon">⏱</div><div class="kpi-val gold" id="k-otp">—</div><div class="kpi-label">On-Time Performance</div></div>
+    <div class="kpi"><div class="kpi-icon">👥</div><div class="kpi-val" id="k-pax">—</div><div class="kpi-label">Passengers / hr</div></div>
+    <div class="kpi"><div class="kpi-icon">🤖</div><div class="kpi-val green" id="k-ai">—</div><div class="kpi-label">AI Model Accuracy</div></div>
+    <div class="kpi"><div class="kpi-icon">🛡</div><div class="kpi-val" id="k-sec">—</div><div class="kpi-label">Security Score</div></div>
+    <div class="kpi"><div class="kpi-icon">🛫</div><div class="kpi-val gold" id="k-rwy">—</div><div class="kpi-label">Runway Utilization</div></div>
+  </div>
+
+  <!-- FEATURE IMAGE CARDS -->
+  <div class="sec-lbl au d2">Platform Modules</div>
+  <div class="g3 mb3 au d2">
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&q=80" alt="Dashboard">
+      <div class="img-card-body">
+        <div class="img-card-title">📊 Analytics Dashboard</div>
+        <div class="img-card-desc">Delay trends, airline performance, route analytics and real-time KPI counters.</div>
+        <a href="/dashboard" class="btn btn-sky btn-sm mt2" style="align-self:flex-start">Open Dashboard →</a>
+      </div>
+    </div>
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80" alt="Predict">
+      <div class="img-card-body">
+        <div class="img-card-title">🤖 AI Delay Predictor</div>
+        <div class="img-card-desc">Random Forest model trained on 1200+ Indian aviation records with live confidence scoring.</div>
+        <a href="/predict" class="btn btn-gold btn-sm mt2" style="align-self:flex-start">Predict Now →</a>
+      </div>
+    </div>
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=800&q=80" alt="Network">
+      <div class="img-card-body">
+        <div class="img-card-title">📡 Network Simulation</div>
+        <div class="img-card-desc">15 live airport nodes — ATC, gates, security, baggage and emergency — all communicating in real-time via WebSockets.</div>
+        <a href="/network" class="btn btn-sky btn-sm mt2" style="align-self:flex-start">Open Network →</a>
+      </div>
+    </div>
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1474302770737-173ee21bab63?w=800&q=80" alt="Aircraft">
+      <div class="img-card-body">
+        <div class="img-card-title">✈ Live Aircraft Tracking</div>
+        <div class="img-card-desc">Interactive dark Leaflet map with 20+ animated aircraft moving across India in real-time.</div>
+        <a href="/aircraft" class="btn btn-sky btn-sm mt2" style="align-self:flex-start">Track Aircraft →</a>
+      </div>
+    </div>
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?w=800&q=80" alt="Security">
+      <div class="img-card-body">
+        <div class="img-card-title">🔐 Cybersecurity Center</div>
+        <div class="img-card-desc">Live threat monitoring, intrusion detection, anomaly analysis and airport security scoring.</div>
+        <a href="/security" class="btn btn-danger btn-sm mt2" style="align-self:flex-start">Security Center →</a>
+      </div>
+    </div>
+
+    <div class="img-card">
+      <img src="https://images.unsplash.com/photo-1530521954074-e64f6810b32d?w=800&q=80" alt="Weather">
+      <div class="img-card-body">
+        <div class="img-card-title">🌦 Weather Intelligence</div>
+        <div class="img-card-desc">Live weather simulation with wind, visibility, pressure and delay-impact analysis.</div>
+        <a href="/aircraft" class="btn btn-outline btn-sm mt2" style="align-self:flex-start">View Weather →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LIVE EVENTS + WEATHER -->
+  <div class="g21 au d3">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="cdot"></div>Live Events Feed</div>
+        <span class="badge b-sky" id="evtCount">—</span>
+      </div>
+      <div style="max-height:340px;overflow-y:auto;padding:0 22px 16px;" id="evtFeed">
+        <div style="padding:20px 0;color:var(--muted);font-size:0.84rem">Loading events…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="cdot"></div>Weather Briefing</div>
+        <span class="badge b-gold" id="wxBadge">—</span>
+      </div>
+      <div class="card-body" id="wxPanel">
+        <div style="color:var(--muted);font-size:0.84rem">Loading…</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEV={critical:'var(--red)',warning:'var(--orange)',success:'var(--green)',info:'var(--sky)'};
+const WX_ICON={Clear:'☀️','Partly Cloudy':'⛅','Overcast':'☁️','Light Rain':'🌧️','Thunderstorm':'⛈️','Fog':'🌫️','Windy':'💨'};
+
+async function loadHome(){
+  try{
+    const [kpi,model,events,wx,sec]=await Promise.all([
+      fetch('/api/dashboard/kpi').then(r=>r.json()),
+      fetch('/api/model/stats').then(r=>r.json()),
+      fetch('/api/network/events').then(r=>r.json()),
+      fetch('/api/weather').then(r=>r.json()),
+      fetch('/api/security/summary').then(r=>r.json()),
+    ]);
+
+    document.getElementById('k-flights').textContent=kpi.active_flights;
+    document.getElementById('k-otp').textContent=kpi.on_time_performance+'%';
+    document.getElementById('k-pax').textContent=kpi.passenger_throughput.toLocaleString();
+    document.getElementById('k-ai').textContent=model.accuracy+'%';
+    document.getElementById('k-sec').textContent=kpi.security_score;
+    document.getElementById('k-rwy').textContent=kpi.runway_utilization+'%';
+
+    // Events
+    document.getElementById('evtCount').textContent=events.length+' events';
+    document.getElementById('evtFeed').innerHTML=events.slice(0,20).map(e=>`
+      <div style="padding:9px 0;border-bottom:1px solid rgba(56,189,248,0.06);display:flex;align-items:flex-start;gap:10px;">
+        <div class="sd sd-${e.severity==='critical'?'red':e.severity==='warning'?'orange':e.severity==='success'?'green':'sky'}" style="margin-top:5px;flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:0.77rem;color:var(--muted);font-family:var(--ff-m);margin-bottom:2px;">${e.node_name} · ${e.event_type}</div>
+          <div style="font-size:0.83rem;color:var(--ice2);">${e.message}</div>
+        </div>
+      </div>`).join('');
+
+    // Weather
+    const imp=wx.impact||'None';
+    const impColor=imp.includes('Major')?'var(--red)':imp.includes('Moderate')?'var(--orange)':'var(--green)';
+    document.getElementById('wxBadge').textContent=wx.condition||'—';
+    document.getElementById('wxPanel').innerHTML=`
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px;">
+        <div style="font-size:3.2rem;line-height:1;">${WX_ICON[wx.condition]||'🌡️'}</div>
+        <div>
+          <div style="font-family:var(--ff-h);font-size:2.2rem;font-weight:700;color:var(--sky2);line-height:1;">${wx.temp_c}°C</div>
+          <div style="color:var(--muted);font-size:0.85rem;margin-top:3px;">${wx.condition}</div>
+          <div style="margin-top:4px;"><span class="badge b-${imp.includes('Major')?'red':imp.includes('Moderate')?'orange':'green'}">${imp} Impact</span></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.82rem;">
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Wind</div>
+          <div style="color:var(--ice2);font-weight:500;">${wx.wind_kph} kph ${wx.wind_dir}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Visibility</div>
+          <div style="color:var(--ice2);font-weight:500;">${wx.visibility_km} km</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Humidity</div>
+          <div style="color:var(--ice2);font-weight:500;">${wx.humidity}%</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Pressure</div>
+          <div style="color:var(--ice2);font-weight:500;">${wx.pressure} hPa</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Ceiling</div>
+          <div style="color:var(--ice2);font-weight:500;">${wx.ceiling_ft?.toLocaleString()} ft</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;">
+          <div style="color:var(--muted);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Security</div>
+          <div style="color:var(--ice2);font-weight:500;">${sec.active} active threats</div>
+        </div>
+      </div>`;
+  }catch(e){console.error(e);}
+}
+loadHome(); setInterval(loadHome,9000);
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Network — AeroVerse AI{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au" style="min-height:200px;">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1569163139599-0f4517e36f51?w=1920&q=80');"></div>
+    <div class="hero-g1"></div><div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag">📡 REAL-TIME SIMULATION</div>
+      <h1 class="hero-title" style="font-size:2rem;">Airport <span class="acc">Network Hub</span></h1>
+      <p class="hero-desc" style="font-size:0.88rem;margin-bottom:16px;">15-node airport communication grid with live WebSocket event streaming.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-success btn-sm" onclick="startSim()">▶ Start Simulation</button>
+        <button class="btn btn-danger btn-sm" onclick="stopSim()">■ Stop</button>
+        <button class="btn btn-outline btn-sm" onclick="loadAll()">↺ Refresh</button>
+        <span id="simBadge" class="badge b-red">STOPPED</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NODES + RADAR -->
+  <div class="g21 mb3 au d1">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Node Status Grid</div><span id="nodeCount" class="badge b-sky">15 nodes</span></div>
+      <div class="card-body" id="nodeGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Airport Radar</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div class="radar" style="width:240px;height:240px;">
+          <div class="rsweep"></div>
+          <div class="rh"></div><div class="rv"></div>
+          <div id="radarDots"></div>
+        </div>
+        <div id="radarInfo" style="font-size:0.76rem;color:var(--muted);text-align:center;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RUNWAYS + GATES -->
+  <div class="g2 mb3 au d2">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Runway Status</div></div>
+      <div class="card-body" id="runwayPanel"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="cdot"></div>Gate Occupancy Grid</div>
+        <span id="gatesFree" class="badge b-green">— Free</span>
+      </div>
+      <div class="card-body" id="gatesGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;"></div>
+    </div>
+  </div>
+
+  <!-- LIVE EVENTS -->
+  <div class="card au d3">
+    <div class="card-header">
+      <div class="card-title"><div class="cdot"></div>Live Event Stream</div>
+      <span id="evtCount" class="badge b-sky">0 events</span>
+    </div>
+    <div id="evtFeed" style="max-height:380px;overflow-y:auto;padding:0 22px 16px;font-family:var(--ff-m);font-size:0.76rem;"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEV={critical:'sd-red',warning:'sd-orange',success:'sd-green',info:'sd-sky'};
+const SEVC={critical:'var(--red)',warning:'var(--orange)',success:'var(--green)',info:'var(--sky)'};
+
+async function startSim(){await fetch('/api/network/start',{method:'POST'});loadAll();}
+async function stopSim(){await fetch('/api/network/stop',{method:'POST'});loadAll();}
+
+async function loadAll(){
+  const [status,events,runways,gates]=await Promise.all([
+    fetch('/api/network/status').then(r=>r.json()),
+    fetch('/api/network/events').then(r=>r.json()),
+    fetch('/api/runways').then(r=>r.json()),
+    fetch('/api/gates').then(r=>r.json()),
+  ]);
+
+  // Badge
+  const sb=document.getElementById('simBadge');
+  sb.className='badge '+(status.running?'b-green':'b-red');
+  sb.textContent=status.running?'RUNNING':'STOPPED';
+
+  // Node grid
+  document.getElementById('nodeGrid').innerHTML=status.nodes.map(n=>`
+    <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border3);border-radius:8px;padding:10px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <div class="sd sd-green" style="flex-shrink:0;"></div>
+        <span style="font-size:0.73rem;font-weight:600;color:var(--ice2);line-height:1.2;">${n.name}</span>
+      </div>
+      <div class="prog"><div class="prog-fill" style="width:${n.load||30}%;"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted);margin-top:4px;">
+        <span>Load ${n.load||30}%</span><span>${(n.messages||0).toLocaleString()} msgs</span>
+      </div>
+    </div>`).join('');
+
+  // Radar dots
+  const rd=document.getElementById('radarDots');
+  rd.innerHTML='';
+  status.nodes.slice(0,12).forEach((n,i)=>{
+    const a=(i/12)*2*Math.PI, r=65+Math.random()*45;
+    const x=120+r*Math.cos(a), y=120+r*Math.sin(a);
+    rd.innerHTML+=`<div style="position:absolute;width:5px;height:5px;border-radius:50%;background:var(--sky2);top:${y}px;left:${x}px;box-shadow:0 0 6px var(--sky);animation:pulse ${1.5+Math.random()}s infinite;"></div>`;
+  });
+  document.getElementById('radarInfo').textContent=`${status.nodes.length} nodes active · ${status.total_events.toLocaleString()} total events`;
+
+  // Runways
+  document.getElementById('runwayPanel').innerHTML=runways.map(r=>`
+    <div style="border:1px solid var(--border3);border-radius:10px;padding:14px;margin-bottom:10px;background:rgba(255,255,255,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-weight:600;color:var(--ice2);">${r.name}</span>
+        <span class="badge ${r.status==='active'?'b-green':r.status==='maintenance'?'b-gold':'b-red'}">${r.status}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.78rem;">
+        <div><span style="color:var(--muted);display:block;font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;">Length</span><b>${r.length_m}m</b></div>
+        <div><span style="color:var(--muted);display:block;font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;">Landing</span><b style="color:var(--sky);">${r.landing_queue} queued</b></div>
+        <div><span style="color:var(--muted);display:block;font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;">Takeoff</span><b style="color:var(--gold2);">${r.takeoff_queue} queued</b></div>
+      </div>
+    </div>`).join('');
+
+  // Gates
+  const free=gates.filter(g=>g.status==='free').length;
+  document.getElementById('gatesFree').textContent=free+' Free';
+  document.getElementById('gatesGrid').innerHTML=gates.map(g=>`
+    <div title="${g.id}: ${g.status}${g.flight?' · '+g.flight:''}"
+      style="height:30px;border-radius:5px;border:1px solid rgba(56,189,248,0.1);
+        display:flex;align-items:center;justify-content:center;cursor:default;
+        font-size:0.6rem;color:var(--muted);font-family:var(--ff-m);
+        background:${g.status==='free'?'rgba(16,185,129,0.08)':g.status==='boarding'?'rgba(245,158,11,0.12)':g.status==='departing'?'rgba(56,189,248,0.1)':'rgba(239,68,68,0.1)'};">${g.id}</div>`).join('');
+
+  // Events
+  document.getElementById('evtCount').textContent=events.length+' events';
+  document.getElementById('evtFeed').innerHTML=events.map(e=>`
+    <div style="padding:6px 0;border-bottom:1px solid rgba(56,189,248,0.04);display:flex;gap:8px;">
+      <span style="color:var(--muted);min-width:130px;flex-shrink:0;">${e.created_at?.slice(11,19)||'—'}</span>
+      <span style="color:${SEVC[e.severity]||'var(--sky)'};min-width:60px;">[${e.event_type}]</span>
+      <span style="color:var(--muted);min-width:120px;flex-shrink:0;">${e.node_name}</span>
+      <span style="color:var(--ice2);">${e.message}</span>
+    </div>`).join('');
+}
+
+// Live socket events
+const socket=io();
+socket.on('sim_event',ev=>{
+  if(!ev.message) return;
+  const feed=document.getElementById('evtFeed');
+  const d=document.createElement('div');
+  d.style.cssText='padding:6px 0;border-bottom:1px solid rgba(56,189,248,0.04);display:flex;gap:8px;animation:fadeUp .3s ease;';
+  d.innerHTML=`<span style="color:var(--sky);min-width:60px;">[LIVE]</span><span style="color:var(--gold2);">${ev.message}</span>`;
+  feed.prepend(d);
+  if(feed.children.length>80) feed.lastChild.remove();
+});
+
+loadAll(); setInterval(loadAll,6000);
+</script>
+{% endblock %}

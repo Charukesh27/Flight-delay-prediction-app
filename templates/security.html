@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Security — AeroVerse AI{% endblock %}
+{% block body %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero au" style="min-height:200px;">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?w=1920&q=80');"></div>
+    <div class="hero-g1"></div><div class="hero-g2"></div>
+    <div class="hero-c">
+      <div class="hero-tag" style="background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.35);color:var(--red);">🔐 CYBERSECURITY OPS CENTER</div>
+      <h1 class="hero-title" style="font-size:2rem;">Threat <span class="acc">Detection &amp; Response</span></h1>
+      <p class="hero-desc" style="font-size:0.88rem;margin-bottom:0;">Real-time intrusion monitoring, anomaly detection and AI-powered security analytics.</p>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid mb3 au d1">
+    <div class="kpi" style="border-color:rgba(239,68,68,0.2);">
+      <div class="kpi-icon">🚨</div><div class="kpi-val red" id="s-active">—</div><div class="kpi-label">Active Threats</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">⚠️</div><div class="kpi-val gold" id="s-critical">—</div><div class="kpi-label">Critical Events</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">📊</div><div class="kpi-val" id="s-total">—</div><div class="kpi-label">Total Events</div>
+    </div>
+    <div class="kpi" style="border-color:rgba(16,185,129,0.2);">
+      <div class="kpi-icon">✅</div><div class="kpi-val green" id="s-resolved">—</div><div class="kpi-label">Resolved</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon">🛡️</div><div class="kpi-val" id="s-score">—</div><div class="kpi-label">Security Score</div>
+    </div>
+  </div>
+
+  <!-- CHART + MATRIX -->
+  <div class="g2 mb3 au d2">
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>Threat Distribution</div></div>
+      <div class="card-body"><canvas id="threatChart" height="240"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title"><div class="cdot"></div>System Security Matrix</div></div>
+      <div class="card-body" id="secMatrix">Loading…</div>
+    </div>
+  </div>
+
+  <!-- THREATS IMAGE CARD -->
+  <div class="g2 mb3 au d2">
+    <div class="img-card" style="height:160px;">
+      <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&q=80" alt="cyber" style="height:160px;">
+      <div class="img-card-body">
+        <div class="img-card-title">AI Anomaly Detection</div>
+        <div class="img-card-desc">Machine learning models monitoring all 15 nodes 24/7 for unusual patterns.</div>
+      </div>
+    </div>
+    <div class="img-card" style="height:160px;">
+      <img src="https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=800&q=80" alt="network" style="height:160px;">
+      <div class="img-card-body">
+        <div class="img-card-title">Network Intrusion Watch</div>
+        <div class="img-card-desc">Real-time packet inspection and suspicious IP tracking across ATC subnets.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENTS TABLE -->
+  <div class="card au d3">
+    <div class="card-header">
+      <div class="card-title"><div class="cdot"></div>Live Security Events</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="threatCount" class="badge b-red">—</span>
+        <button class="btn btn-outline btn-sm" onclick="loadAll()">↺ Refresh</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="av-table">
+        <thead><tr><th>Time</th><th>Threat Type</th><th>Source IP</th><th>Severity</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody id="threatsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+Chart.defaults.color='#5a7a9a';
+Chart.defaults.borderColor='rgba(56,189,248,0.06)';
+let tChart=null;
+
+async function loadAll(){
+  const [sum,threats,types,kpi]=await Promise.all([
+    fetch('/api/security/summary').then(r=>r.json()),
+    fetch('/api/security/events').then(r=>r.json()),
+    fetch('/api/security/threats').then(r=>r.json()),
+    fetch('/api/dashboard/kpi').then(r=>r.json()),
+  ]);
+
+  document.getElementById('s-active').textContent=sum.active;
+  document.getElementById('s-critical').textContent=sum.critical;
+  document.getElementById('s-total').textContent=sum.total;
+  document.getElementById('s-resolved').textContent=sum.resolved;
+  document.getElementById('s-score').textContent=kpi.security_score;
+
+  // Threat chart
+  const ctx=document.getElementById('threatChart');
+  if(tChart) tChart.destroy();
+  tChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:types.map(t=>t.threat),
+      datasets:[{data:types.map(t=>t.count),
+        backgroundColor:['rgba(239,68,68,0.75)','rgba(249,115,22,0.7)','rgba(245,158,11,0.7)','rgba(56,189,248,0.7)','rgba(139,92,246,0.7)','rgba(16,185,129,0.7)','rgba(239,68,68,0.5)'],
+        borderColor:'rgba(4,7,15,0.8)',borderWidth:2,hoverOffset:6}]
+    },
+    options:{plugins:{legend:{position:'right',labels:{font:{size:11},color:'#5a7a9a',padding:12}}},cutout:'60%'}
+  });
+
+  // Matrix
+  const SYSTEMS=['ATC Network','Passenger DB','Gate Systems','Radar Feed','Comm Links','SCADA','Surveillance','Perimeter'];
+  document.getElementById('secMatrix').innerHTML=SYSTEMS.map(s=>{
+    const ok=Math.random()>0.18,pct=ok?Math.floor(Math.random()*14+84):Math.floor(Math.random()*28+52);
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">
+      <div class="sd ${ok?'sd-green':'sd-orange'}" style="flex-shrink:0;"></div>
+      <span style="font-size:0.8rem;min-width:120px;color:var(--ice2);">${s}</span>
+      <div class="prog" style="flex:1;"><div class="prog-fill ${ok?'':'pf-red'}" style="width:${pct}%;"></div></div>
+      <span style="font-family:var(--ff-m);font-size:0.74rem;color:${ok?'var(--green)':'var(--orange)'};min-width:34px;text-align:right;">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  // Table
+  document.getElementById('threatCount').textContent=threats.length+' events';
+  const SEV={low:'b-sky',medium:'b-gold',high:'b-orange',critical:'b-red'};
+  const ST={active:'b-red',resolved:'b-green',investigating:'b-gold'};
+  document.getElementById('threatsTbody').innerHTML=threats.map(t=>`
+    <tr>
+      <td style="font-family:var(--ff-m);font-size:0.72rem;color:var(--muted);">${(t.created_at||'').slice(0,16)}</td>
+      <td style="font-weight:600;color:var(--ice2);">${t.threat_type}</td>
+      <td style="font-family:var(--ff-m);font-size:0.78rem;color:var(--sky2);">${t.source_ip}</td>
+      <td><span class="badge ${SEV[t.severity]||'b-sky'}">${t.severity}</span></td>
+      <td style="font-size:0.78rem;color:var(--muted);max-width:260px;">${t.description}</td>
+      <td><span class="badge ${ST[t.status]||'b-sky'}">${t.status}</span></td>
+    </tr>`).join('');
+}
+
+loadAll(); setInterval(loadAll,8000);
+</script>
+{% endblock %}

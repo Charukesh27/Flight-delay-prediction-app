@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}AeroVerse AI{% endblock %}</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="scan"></div>
+
+<nav class="nav">
+  <a href="/" class="nav-brand">
+    <div class="brand-icon">✈</div>
+    <div>
+      <div class="brand-name">AEROVERSE AI</div>
+      <div class="brand-sub">SMART AIRPORT DIGITAL TWIN</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="/"          class="{% if request.path=='/' %}active{% endif %}">Home</a>
+    <a href="/dashboard" class="{% if request.path=='/dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="/predict"   class="{% if request.path=='/predict' %}active{% endif %}">Predict</a>
+    <a href="/network"   class="{% if request.path=='/network' %}active{% endif %}">Network</a>
+    <a href="/aircraft"  class="{% if request.path=='/aircraft' %}active{% endif %}">Aircraft</a>
+    <a href="/security"  class="{% if request.path=='/security' %}active{% endif %}">Security</a>
+  </div>
+  <div class="nav-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <span class="nav-time" id="navClock">--:--:--</span>
+    {% if user %}
+    <div class="nav-user">
+      <div class="user-av">{{ user.name[0].upper() }}</div>
+      <span style="font-size:0.8rem;color:var(--ice2)">{{ user.name }}</span>
+    </div>
+    <a href="/logout" class="nav-logout">Logout</a>
+    {% endif %}
+  </div>
+</nav>
+
+{% block body %}{% endblock %}
+
+<script>
+setInterval(()=>{document.getElementById('navClock').textContent=new Date().toTimeString().slice(0,8);},1000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

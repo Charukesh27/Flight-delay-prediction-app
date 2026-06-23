@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Register — AeroVerse AI</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="scan"></div>
+
+<div class="auth-bg" style="background-image:url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1920&q=85');"></div>
+<div class="auth-ov"></div>
+<div style="position:fixed;inset:0;z-index:1;pointer-events:none;" id="particles"></div>
+
+<div class="auth-page">
+  <div class="auth-panel">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">✈</div>
+      <div>
+        <div class="auth-logo-name">AEROVERSE AI</div>
+        <div class="auth-logo-sub">OPERATOR REGISTRATION</div>
+      </div>
+    </div>
+
+    <div class="auth-title">Create Account</div>
+    <div class="auth-sub">Register as an airport operations specialist</div>
+
+    <div class="auth-err" id="errMsg"></div>
+    <div class="auth-ok"  id="okMsg"></div>
+
+    <div class="form-group">
+      <label class="form-label">Full Name / Operator ID</label>
+      <input class="form-control" type="text" id="nameInput" placeholder="e.g. Arjun Sharma" autocomplete="name" autofocus>
+      <div class="hint">This will be your login identifier</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Passcode</label>
+      <div class="pass-wrap">
+        <input class="form-control" type="password" id="passInput" placeholder="Choose a passcode">
+        <button class="pass-toggle" type="button" onclick="togglePass('passInput','btn1')" id="btn1">👁</button>
+      </div>
+      <div class="hint">Min 4 characters — use something memorable</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Confirm Passcode</label>
+      <div class="pass-wrap">
+        <input class="form-control" type="password" id="confInput" placeholder="Repeat your passcode">
+        <button class="pass-toggle" type="button" onclick="togglePass('confInput','btn2')" id="btn2">👁</button>
+      </div>
+    </div>
+
+    <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center;" onclick="doRegister()" id="regBtn">
+      <span id="btnLabel">Create Operator Account</span>
+    </button>
+
+    <div class="auth-switch">Already registered? <a href="/login">Sign in →</a></div>
+
+    <div class="auth-feats">
+      <div class="auth-feat"><div class="fdot"></div>Full platform access</div>
+      <div class="auth-feat"><div class="fdot"></div>Secure session</div>
+      <div class="auth-feat"><div class="fdot"></div>Real-time data</div>
+      <div class="auth-feat"><div class="fdot"></div>AI analytics</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function togglePass(id,bid){
+  const i=document.getElementById(id),b=document.getElementById(bid);
+  if(i.type==='password'){i.type='text';b.textContent='🙈';}
+  else{i.type='password';b.textContent='👁';}
+}
+
+async function doRegister(){
+  const name=document.getElementById('nameInput').value.trim();
+  const pass=document.getElementById('passInput').value;
+  const conf=document.getElementById('confInput').value;
+  const err=document.getElementById('errMsg');
+  const ok=document.getElementById('okMsg');
+  const btn=document.getElementById('btnLabel');
+  err.style.display='none'; ok.style.display='none';
+
+  if(!name||!pass){err.textContent='Please fill in all fields.';err.style.display='block';return;}
+  if(pass.length<4){err.textContent='Passcode must be at least 4 characters.';err.style.display='block';return;}
+  if(pass!==conf){err.textContent='Passcodes do not match.';err.style.display='block';return;}
+
+  btn.textContent='Registering…';
+  document.getElementById('regBtn').disabled=true;
+
+  try{
+    const r=await fetch('/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,passcode:pass})});
+    const d=await r.json();
+    if(d.ok){
+      ok.textContent='✓ Account created! Redirecting to login…';ok.style.display='block';
+      setTimeout(()=>{window.location.href='/login';},1500);
+    } else {
+      err.textContent=d.error||'Registration failed.';err.style.display='block';
+      btn.textContent='Create Operator Account';
+      document.getElementById('regBtn').disabled=false;
+    }
+  }catch(e){
+    err.textContent='Connection error.';err.style.display='block';
+    btn.textContent='Create Operator Account';
+    document.getElementById('regBtn').disabled=false;
+  }
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
+
+// Particles
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<28;i++){
+    const d=document.createElement('div'),sz=Math.random()*2+1;
+    d.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;background:rgba(245,158,11,${Math.random()*0.35+0.1});top:${Math.random()*100}%;left:${Math.random()*100}%;animation:floatP ${Math.random()*12+8}s linear infinite;animation-delay:-${Math.random()*12}s;`;
+    c.appendChild(d);
+  }
+  const st=document.createElement('style');
+  st.textContent=`@keyframes floatP{0%{transform:translateY(0);opacity:.4}50%{transform:translateY(-50px) translateX(15px);opacity:.8}100%{transform:translateY(0);opacity:.4}}`;
+  document.head.appendChild(st);
+})();
+</script>
+</body>
+</html>
